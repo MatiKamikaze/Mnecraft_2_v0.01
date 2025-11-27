@@ -608,9 +608,356 @@ def test_imports():
 
 ---
 
+## c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\run_game.bat
+
+Opis: skrypt uruchamiający grę w Windowsie. Automatycznie tworzy venv, instaluje zależności i uruchamia grę. Przydatne do szybkiego startu.
+
+```bat
+REM filepath: c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\run_game.bat
+@echo off
+SETLOCAL ENABLEDELAYEDEXPANSION
+
+title Minecraft_2_Ursina - Launcher
+color 0A
+
+echo.
+echo ======================================
+echo  Minecraft_2_Ursina - Game Launcher
+echo ======================================
+echo.
+
+REM --- Sprawdzenie czy Python jest zainstalowany ---
+echo Sprawdzam czy Python jest zainstalowany...
+python --version >nul 2>&1
+if errorlevel 1 (
+    color 0C
+    echo [BLAD] Python nie znaleziony w PATH!
+    echo Zainstaluj Python 3.8+ ze strony https://www.python.org/
+    echo.
+    pause
+    exit /b 1
+) else (
+    echo [OK] Python znaleziony.
+    python --version
+    echo.
+)
+
+REM --- Sprawdzenie czy requirements.txt istnieje ---
+if not exist "requirements.txt" (
+    color 0C
+    echo [BLAD] requirements.txt nie znaleziony!
+    echo Upewnij sie ze jestes w katalogu projektu.
+    echo.
+    pause
+    exit /b 1
+)
+echo [OK] requirements.txt znaleziony.
+echo.
+
+REM --- Tworzenie/aktywacja venv ---
+echo Krok 1: Sprawdzam wirtualne srodowisko (venv)...
+if exist "venv\Scripts\activate.bat" (
+    echo [OK] venv juz istnieje. Aktywuję...
+    call "venv\Scripts\activate.bat"
+    if errorlevel 1 (
+        color 0C
+        echo [BLAD] Nie udalo sie aktywowac venv.
+        pause
+        exit /b 1
+    )
+    echo [OK] venv aktywowany.
+) else (
+    echo [INFO] venv nie istnieje. Tworzę nowy (moze zajac 10-30 sekund)...
+    python -m venv venv
+    if errorlevel 1 (
+        color 0C
+        echo [BLAD] Nie udalo sie utworzyc venv.
+        pause
+        exit /b 1
+    )
+    echo [OK] venv utworzony. Aktywuję...
+    call "venv\Scripts\activate.bat"
+    if errorlevel 1 (
+        color 0C
+        echo [BLAD] Nie udalo sie aktywowac venv.
+        pause
+        exit /b 1
+    )
+    echo [OK] venv aktywowany.
+)
+echo.
+
+REM --- Instalacja zaleznosci ---
+echo Krok 2: Instaluję zaleznosci (moze zajac kilka minut)...
+pip install --upgrade pip
+if errorlevel 1 (
+    color 0C
+    echo [BLAD] Nie udalo sie zaktualizowac pip.
+    pause
+    exit /b 1
+)
+pip install -r requirements.txt
+if errorlevel 1 (
+    color 0C
+    echo [BLAD] Nie udalo sie zainstalowac zaleznosci z requirements.txt.
+    echo Sprawdz czy wszystkie pakiety sa dostepne.
+    pause
+    exit /b 1
+)
+echo [OK] Zaleznosci zainstalowane.
+echo.
+
+REM --- Sprawdzenie czy main.py istnieje ---
+if not exist "main.py" (
+    color 0C
+    echo [BLAD] main.py nie znaleziony!
+    echo Upewnij sie ze jestes w katalogu projektu.
+    pause
+    exit /b 1
+)
+echo [OK] main.py znaleziony.
+echo.
+
+REM --- Uruchomienie gry ---
+echo Krok 3: Uruchamiam grę...
+echo ======================================
+echo.
+python main.py
+set GAME_EXIT=%ERRORLEVEL%
+echo.
+echo ======================================
+
+REM --- Wynik uruchomienia ---
+if %GAME_EXIT% equ 0 (
+    color 0A
+    echo [OK] Gra zakonczyla sie bezblednie.
+) else (
+    color 0C
+    echo [BLAD] Gra zakonczyla sie z kodem bledu: %GAME_EXIT%
+)
+echo.
+echo Nacisnij dowolny klawisz aby zamknac okno...
+pause >nul
+
+ENDLOCAL
+exit /b %GAME_EXIT%
+```
+
+---
+
+## c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\run_game_simple.bat
+
+Opis: alternatywna wersja bez venv — instaluje pakiety globalnie. Szybka do testów jeśli chcesz uniknąć venv.
+
+```bat
+REM filepath: c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\run_game_simple.bat
+@echo off
+title Minecraft_2_Ursina - Simple Launcher
+color 0A
+
+echo.
+echo ======================================
+echo  Minecraft_2_Ursina (Simple - bez venv)
+echo ======================================
+echo.
+
+echo Sprawdzam Python...
+python --version
+if errorlevel 1 (
+    color 0C
+    echo [BLAD] Python nie zainstalowany!
+    pause
+    exit /b 1
+)
+
+echo.
+echo Instaluję zaleznosci (bez venv)...
+pip install -r requirements.txt --user
+if errorlevel 1 (
+    color 0C
+    echo [BLAD] Instalacja nie powiodła sie.
+    pause
+    exit /b 1
+)
+
+echo.
+echo Uruchamiam grę...
+echo ======================================
+echo.
+python main.py
+set RESULT=%ERRORLEVEL%
+echo.
+echo ======================================
+echo Gra zakonczyla sie (kod: %RESULT%)
+echo Nacisnij dowolny klawisz aby zamknac okno...
+pause >nul
+
+ENDLOCAL
+exit /b %RESULT%
+```
+
+---
+
+## c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\game\enemy.py
+
+Opis: Moduł wrogów z AI — ściganie gracza, atak, HP. Każdy wróg to Entity z logicą ataku i zdrowiem.
+
+```python
+# filepath: c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\game\enemy.py
+# Moduł Enemy — wrogowie, AI, HP, atak
+
+from ursina import Entity, color, Vec3, raycast
+from math import sin, cos, radians
+import random
+
+# Klasa bazowa dla wrogów
+class Enemy(Entity):
+    def __init__(self, position=(0,0,0), target=None, **kwargs):
+        super().__init__(
+            model='cube',
+            color=color.red,
+            scale=(1,1,1),
+            position=position,
+            collider='box',
+            **kwargs
+        )
+        self.target = target  # Cel (gracz)
+        self.speed = 2  # Prędkość poruszania się
+        self.hp = 100  # Punkty życia
+        self.attack_damage = 10  # Obrażenia ataku
+        self.attack_range = 1.5  # Zasięg ataku
+        self.agro_range = 10  # Zasięg dostrzegania gracza
+        self.path = []  # Ścieżka do gracza (lista pozycji)
+        self.patrol_points = []  # Punkty patrolowe (lista pozycji)
+        self.current_patrol_index = 0  # Indeks aktualnego punktu patrolowego
+
+    def update(self):
+        # Główna logika wroga: ściganie gracza, atak, patrolowanie
+        if self.target:
+            distance = self.distance_to(self.target)
+            if distance < self.agro_range:
+                # Jeśli gracz w zasięgu aggro, ścigaj go
+                self.chase_target()
+            else:
+                # W przeciwnym razie patroluj między punktami
+                self.patrol()
+
+    def chase_target(self):
+        # Ścigaj cel (gracza)
+        direction = (self.target.position - self.position).normalized()
+        self.position += direction * self.speed * time.dt
+        self.look_at(self.target)  # Obróć się w stronę celu
+
+        # Sprawdź atak
+        if self.distance_to(self.target) < self.attack_range:
+            self.attack()
+
+    def attack(self):
+        # Atakuj cel (zadaj obrażenia)
+        if self.target.hp > 0:
+            self.target.hp -= self.attack_damage
+            print(f'Zaatakowano gracza! Pozostałe HP: {self.target.hp}')
+
+    def patrol(self):
+        # Patroluj między punktami
+        if not self.patrol_points:
+            return
+        target_point = self.patrol_points[self.current_patrol_index]
+        direction = (target_point - self.position).normalized()
+        self.position += direction * self.speed * time.dt
+        self.look_at(target_point)  # Obróć się w stronę punktu patrolowego
+
+        # Sprawdź, czy dotarłeś do punktu patrolowego
+        if self.distance_to(target_point) < 0.5:
+            self.current_patrol_index = (self.current_patrol_index + 1) % len(self.patrol_points)
+
+    def set_patrol_points(self, points):
+        # Ustaw punkty patrolowe
+        self.patrol_points = points
+
+# Przykładowy wróg
+enemy = Enemy(position=(5,0,5))
+enemy.set_patrol_points([
+    Vec3(5,0,5),
+    Vec3(10,0,10),
+    Vec3(5,0,15),
+    Vec3(0,0,10),
+])
+```
+
+---
+
+## c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\assets\generate_textures.py
+
+Opis: Skrypt generujący proste PNG tekstury. Uruchom raz: `python assets/generate_textures.py`
+
+```python
+# filepath: c:\Users\MatiKamikaze\Documents\GitHub\Mnecraft_2_v0.01\assets\generate_textures.py
+from PIL import Image
+import noise
+import numpy as np
+
+# Ustawienia
+TEXTURE_SIZE = 16
+TERRAIN_TYPES = ['grass', 'dirt', 'stone', 'sand']
+
+def generate_texture(terrain_type):
+    # Generuje teksturę w zależności od typu terenu
+    if terrain_type == 'grass':
+        return generate_grass_texture()
+    elif terrain_type == 'dirt':
+        return generate_dirt_texture()
+    elif terrain_type == 'stone':
+        return generate_stone_texture()
+    elif terrain_type == 'sand':
+        return generate_sand_texture()
+    else:
+        raise ValueError(f'Nieznany typ terenu: {terrain_type}')
+
+def generate_grass_texture():
+    # Przykładowa tekstura trawy (zielony kolor)
+    data = np.zeros((TEXTURE_SIZE, TEXTURE_SIZE, 3), dtype=np.uint8)
+    data[..., 0] = 34
+    data[..., 1] = 139
+    data[..., 2] = 34
+    return Image.fromarray(data)
+
+def generate_dirt_texture():
+    # Przykładowa tekstura brudu (brązowy kolor)
+    data = np.zeros((TEXTURE_SIZE, TEXTURE_SIZE, 3), dtype=np.uint8)
+    data[..., 0] = 139
+    data[..., 1] = 69
+    data[..., 2] = 19
+    return Image.fromarray(data)
+
+def generate_stone_texture():
+    # Przykładowa tekstura kamienia (szary kolor)
+    data = np.zeros((TEXTURE_SIZE, TEXTURE_SIZE, 3), dtype=np.uint8)
+    data[..., 0] = 169
+    data[..., 1] = 169
+    data[..., 2] = 169
+    return Image.fromarray(data)
+
+def generate_sand_texture():
+    # Przykładowa tekstura piasku (żółty kolor)
+    data = np.zeros((TEXTURE_SIZE, TEXTURE_SIZE, 3), dtype=np.uint8)
+    data[..., 0] = 194
+    data[..., 1] = 178
+    data[..., 2] = 128
+    return Image.fromarray(data)
+
+# Generowanie tekstur dla wszystkich typów terenu
+for terrain_type in TERRAIN_TYPES:
+    texture = generate_texture(terrain_type)
+    texture.save(f'assets/textures/{terrain_type}_texture.png')
+    print(f'Wygenerowano teksturę: {terrain_type}_texture.png')
+```
+
+---
+
 Koniec pliku ANNOTATED_PROJECT.md
 
 Uwagi końcowe:
-- Wklej powyższe sekcje do pojedynczego pliku ANNOTATED_PROJECT.md w katalogu projektu.  
+- Wklej powyższe sekcje do ANNOTATED_PROJECT.md i obu plików .bat do repo.  
 - Jeśli chcesz, mogę wygenerować te pliki bezpośrednio do working set — dodaj pliki do working set lub użyj `#codebase` w następnym żądaniu.  
 - Dalsze rekomendacje: dodać asynchroniczne ładowanie chunków, mapę materiałów (tekstury), i system eventów dla zapisu/ładowania.

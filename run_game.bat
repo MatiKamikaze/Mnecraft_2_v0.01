@@ -1,40 +1,85 @@
 @echo off
-SETLOCAL
+SETLOCAL ENABLEDELAYEDEXPANSION
 
-echo ------------------------------
-echo Minecraft_2_Ursina - Uruchomienie gry
-echo ------------------------------
+title Minecraft_2_Ursina - Launcher
+color 0A
 
-REM --- Aktywuj virtualenv jeśli istnieje, inaczej utwórz i aktywuj ---
+echo.
+echo ======================================
+echo  Minecraft_2_Ursina - Game Launcher
+echo ======================================
+echo.
+
+REM --- Sprawdzenie Python ---
+echo Sprawdzam czy Python jest zainstalowany...
+python --version >nul 2>&1
+if errorlevel 1 (
+    color 0C
+    echo [BLAD] Python nie znaleziony w PATH!
+    echo.
+    pause
+    exit /b 1
+) else (
+    echo [OK] Python znaleziony.
+    python --version
+    echo.
+)
+
+REM --- Sprawdzenie requirements.txt ---
+if not exist "requirements.txt" (
+    color 0C
+    echo [BLAD] requirements.txt nie znaleziony!
+    echo.
+    pause
+    exit /b 1
+)
+echo [OK] requirements.txt znaleziony.
+echo.
+
+REM --- Tworzenie/aktywacja venv ---
+echo Krok 1: Sprawdzam wirtualne srodowisko (venv)... 
 if exist "venv\Scripts\activate.bat" (
-    echo Aktywacja istniejącego venv...
+    echo [OK] venv juz istnieje. Aktywuję...
     call "venv\Scripts\activate.bat"
 ) else (
-    echo Brak venv w ./venv. Tworzenie virtualenv (moze zajac chwile)...
+    echo [INFO] Tworzę nowy venv (moze zajac chwile)... 
     python -m venv venv
-    if exist "venv\Scripts\activate.bat" (
-        call "venv\Scripts\activate.bat"
-    ) else (
-        echo Nie udalo sie utworzyc venv. Upewnij sie, ze Python jest zainstalowany i w PATH.
-    )
+    call "venv\Scripts\activate.bat"
 )
-
-REM --- Zainstaluj zależności jeśli istnieje requirements.txt ---
-if exist "requirements.txt" (
-    echo Instalowanie zaleznosci z requirements.txt...
-    pip install --upgrade pip
-    pip install -r requirements.txt
-) else (
-    echo Brak requirements.txt — pomijam instalacje zaleznosci.
-)
-
-REM --- Uruchom glowny skrypt gry ---
-echo Uruchamiam python main.py ...
-python main.py
-
-REM --- Pozostaw okno otwarte by zobaczyc wyjscie/bledy ---
 echo.
-echo Gra zakonczona. Nacisnij dowolny klawisz aby zamknac okno.
+
+REM --- Instalacja zaleznosci ---
+echo Krok 2: Instaluję zaleznosci...
+pip install --upgrade pip >nul 2>&1
+pip install -r requirements.txt >nul 2>&1
+echo [OK] Zaleznosci zainstalowane.
+echo.
+
+REM --- NOWY: Generowanie tekstur ---
+echo Krok 3: Generuję tekstury (jeśli brak)... 
+if not exist "assets\textures\grass.png" (
+    echo Generuję pliki PNG tekstur...
+    python assets\generate_textures.py
+    if errorlevel 1 (
+        echo [WARN] Nie udalo sie wygenerowac tekstur. Gra uruchomi sie bez tekstur.
+    )
+) else (
+    echo [OK] Tekstury juz istnieja.
+)
+echo.
+
+REM --- Uruchomienie gry ---
+echo Krok 4: Uruchamiam grę...
+echo ======================================
+echo.
+python main.py
+set GAME_EXIT=%ERRORLEVEL%
+echo.
+echo ======================================
+
+echo [OK] Gra zakonczyla sie (kod: %GAME_EXIT%)
+echo Nacisnij dowolny klawisz aby zamknac okno...
 pause >nul
 
 ENDLOCAL
+exit /b %GAME_EXIT%

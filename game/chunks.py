@@ -1,9 +1,8 @@
-import math, json
-from ursina import Vec3
+import math
 from . import terrain
 
 CHUNK_SIZE = 16
-VIEW_DISTANCE = 2  # w chunkach
+VIEW_DISTANCE = 3  # zwiększone z 2 na 3 (dalej widoczny teren, ale optymalizacja)
 
 def chunk_coords_from_world(x, z):
     cx = math.floor(x / CHUNK_SIZE)
@@ -34,7 +33,7 @@ class ChunkManager:
                     height = 3
                 for y in range(height):
                     pos = (x - terrain.TERRAIN_SIZE//2, y, z - terrain.TERRAIN_SIZE//2)
-                    terrain.spawn_block(pos)
+                    terrain.spawn_block(pos, height=y)
                     positions.add(pos)
         self.loaded[key] = positions
 

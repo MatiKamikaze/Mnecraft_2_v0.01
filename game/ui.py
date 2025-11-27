@@ -1,7 +1,8 @@
-from ursina import Button, Entity, color, mouse, camera, application, Text
+from ursina import Button, Entity, color, mouse, camera, application, time
 from ursina import Entity as E
 
 paused = False
+enemy_manager = None  # będzie ustawione w setup_ui
 
 def setup_ui(terrain, player, styles_module=None):
     # hotbar
@@ -42,37 +43,55 @@ def setup_ui(terrain, player, styles_module=None):
     flat_button.on_click = lambda: start("Flat")
     natural_button.on_click = lambda: start("Natural")
 
+    # Zamiast starego kodu, poniżej integruję wrogi
+    global esc_overlay, enemy_manager
+    from game.enemy import EnemyManager
+    enemy_manager = EnemyManager(player.player, spawn_distance=25.0)
+
 # input and update functions (Ursina will call functions bound in main)
 def input(key):
-    global paused
-    # main wires this function into global scope
     from game import terrain, player
+    from ursina import time as ursina_time
+    global paused
     if key == 'escape':
         toggle_pause()
     if paused or not player.player.enabled:
         return
 
+    # Hotbar selection
     if key in list('123456789'):
         player.select_slot(int(key)-1)
     if key == 'scroll up': player.select_slot((player.selected_slot+1)%len(player.hotbar_slots))
     if key == 'scroll down': player.select_slot((player.selected_slot-1)%len(player.hotbar_slots))
 
+    # Break block
     if key == 'left mouse down':
         hit = player.get_hit(traverse_target=terrain.world_parent)
         if hit.hit:
             pos = hit.entity.position
             terrain.remove_block((int(round(pos.x)), int(round(pos.y)), int(round(pos.z))))
+
+    # Place block
     if key == 'right mouse down':
         hit = player.get_hit(traverse_target=terrain.world_parent)
         if hit.hit:
-            pos = hit.entity.position; normal = hit.normal
+            pos = hit.entity.position
+            normal = hit.normal
             place_pos = (int(round(pos.x+normal.x)), int(round(pos.y+normal.y)), int(round(pos.z+normal.z)))
             player_pos = (int(round(player.player.x)), int(round(player.player.y)), int(round(player.player.z)))
             if place_pos != player_pos:
                 terrain.spawn_block(place_pos, shade_idx=player.selected_slot)
 
+    # NOWY: Atak (spacja)
+    if key == 'space':
+        if player.try_attack():
+            attacked = enemy_manager.player_attack(damage_range=5.0, damage=5)
+            # Opcjonalnie: print(f"Trafiono wrogów: {attacked}")
+
 def update():
     from game import terrain, player
+    global enemy_manager
+    
     if player.player.enabled:
         player.selected_text.text = f'Selected: {player.selected_slot+1}'
         hit = player.get_hit(traverse_target=terrain.world_parent)
@@ -81,6 +100,19 @@ def update():
             player.highlight.enabled = True
         else:
             player.highlight.enabled = False
+    
+    # NOWY: Aktualizacja wrogów
+    if enemy_manager and player.player.enabled:
+        from ursina import time as ursina_time
+        enemy_manager.update(ursina_time.dt())
+        
+        # Wrogowie atakują gracza (co sekundę, przykład)
+        for enemy in enemy_manager.enemies:
+            if enemy.entity is not None:
+                from ursina import distance
+                dist = distance(player.player.position, enemy.entity.position)
+                if dist < 2.0 and ursina_time.time() % 1.0 < 0.1:  # co 1 sek
+                    player.take_damage(1)
 
 def toggle_pause():
     global paused, esc_overlay

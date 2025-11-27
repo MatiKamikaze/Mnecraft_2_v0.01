@@ -1,5 +1,5 @@
-from ursina import Entity, Vec3, color
-import random, math
+from ursina import Entity, Vec3, color, Texture
+import random, math, os
 
 # Perlin permutation
 _perm = list(range(256))
@@ -32,25 +32,83 @@ def perlin2_octaves(x,y,octaves=4,persistence=0.5,lacunarity=2.0):
         maxv += amp; amp *= persistence; freq *= lacunarity
     return total/maxv
 
-# Settings / storage
-TERRAIN_SIZE = 32
+# ---------------------------
+# Ustawienia terenu — POWIĘKSZONE
+TERRAIN_SIZE = 64  # zwiększone z 32 na 64 (2x większy świat)
 SCALE = 10.0
-MAX_HEIGHT = 8
+MAX_HEIGHT = 12  # zwiększone z 8 na 12 (wyższe góry)
 BLOCK_SCALE = 1
 
+# Storage
 blocks = {}
 world_parent = Entity()
-BLOCK_SHADES = [color.rgb(0,0.5,0), color.rgb(0,0.6,0), color.rgb(0,0.7,0), color.rgb(0,0.8,0)]
 
-def spawn_block(pos, shade_idx=None):
+# Ładowanie tekstur (jeśli dostępne)
+TEXTURE_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "textures")
+
+def get_texture(name):
+    """Zwróć teksturę jeśli istnieje, inaczej None."""
+    path = os.path.join(TEXTURE_DIR, f"{name}.png")
+    if os.path.exists(path):
+        return Texture(path)
+    return None
+
+# Cache tekstur
+texture_cache = {
+    'grass': get_texture('grass'),
+    'dirt': get_texture('dirt'),
+    'stone': get_texture('stone'),
+    'sand': get_texture('sand'),
+    'wood': get_texture('wood'),
+}
+
+# Warstwy terenu i ich kolory
+BLOCK_SHADES = [
+    color.rgb(0,0.5,0),    # zielona trawa
+    color.rgb(0.4,0.3,0),  # brązowa gleba
+    color.rgb(0.6,0.6,0.6), # szara skała
+    color.rgb(1,0.8,0.4),  # piaskowy
+]
+
+def spawn_block(pos, shade_idx=None, height=0):
+    """
+    Tworzy blok — now: obsługuje tekstury i warstwy.
+    height: wysokość bloku (do wyboru tekstury)
+    """
     if pos in blocks: return
     x,y,z = pos
     if shade_idx is None:
         color_to_use = random.choice(BLOCK_SHADES)
+        texture = None
     else:
-        HOTBAR_COLORS = [color.green,color.blue,color.rgb(0.5,0,0.5),color.red,color.rgb(1,0.5,0),color.cyan,color.yellow,color.rgb(1,0,1),color.white]
+        HOTBAR_COLORS = [
+            color.green, color.blue, color.rgb(0.5,0,0.5),
+            color.red, color.rgb(1,0.5,0), color.cyan,
+            color.yellow, color.rgb(1,0,1), color.white
+        ]
         color_to_use = HOTBAR_COLORS[shade_idx % len(HOTBAR_COLORS)]
-    e = Entity(model='cube', scale=BLOCK_SCALE, position=Vec3(x,y,z), color=color_to_use, parent=world_parent, collider='box')
+        texture = None
+    
+    # Wybierz teksturę na podstawie wysokości
+    if height is None or height < 0:
+        texture = texture_cache.get('sand')
+        if not texture:
+            color_to_use = color.rgb(1,0.8,0.4)
+    elif height < 3:
+        texture = texture_cache.get('dirt')
+        if not texture:
+            color_to_use = color.rgb(0.4,0.3,0)
+    elif height < 8:
+        texture = texture_cache.get('grass')
+        if not texture:
+            color_to_use = color.rgb(0,0.5,0)
+    else:
+        texture = texture_cache.get('stone')
+        if not texture:
+            color_to_use = color.rgb(0.6,0.6,0.6)
+    
+    e = Entity(model='cube', scale=BLOCK_SCALE, position=Vec3(x,y,z),
+               color=color_to_use, texture=texture, parent=world_parent, collider='box')
     blocks[pos] = e
     return e
 
@@ -66,11 +124,13 @@ def generate_terrain(terrain_type="Natural"):
     world_parent.enabled = True
     for x in range(TERRAIN_SIZE):
         for z in range(TERRAIN_SIZE):
-            nx = x/SCALE; nz = z/SCALE
+            nx = x/SCALE
+            nz = z/SCALE
             if terrain_type == "Natural":
-                h = perlin2_octaves(nx,nz); h = (h+1)/2
-                height = max(1, int(h*MAX_HEIGHT))
+                h = perlin2_octaves(nx,nz)
+                h = (h+1)/2
+                height = max(1,int(h*MAX_HEIGHT))
             else:
                 height = 3
             for y in range(height):
-                spawn_block((x-TERRAIN_SIZE//2, y, z-TERRAIN_SIZE//2))
+                spawn_block((x-TERRAIN_SIZE//2,y,z-TERRAIN_SIZE//2), height=y)
